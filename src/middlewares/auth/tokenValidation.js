@@ -64,7 +64,7 @@ async function tokenValidator(req, res, next) {
             return res.status(401).send({ MESSAGE: 'Invalid token payload.' });
         }
     } catch (err) {
-        
+        console.log("Token verification error:", err.message);
         return res.status(401).send({ MESSAGE: 'Invalid or expired token: ' + err.message });
     }
 }
@@ -114,60 +114,6 @@ async function admintokenValidator(req, res, next) {
         console.error("Token verification error:", err.message);
         return res.status(401).send({ MESSAGE: 'Invalid or expired token: ' + err.message });
     }
-}
-
-// Token verification for "register" token
-async function readverifyRegisterTokens(req, res, next) {
-  const tokenHeader = req.headers.authorization;
-  const token = tokenHeader && tokenHeader.split(" ")[1];
-
-  console.log("Received token:", token);
-
-  if (!token) {
-    return res.status(401).send({ MESSAGE: "Missing or invalid token." });
-  }
-
-  try {
-    const snapshot = await Token.where("token", "==", token).limit(1).get();
-    const existingToken = !snapshot.empty ? snapshot.docs[0].data() : null;
-    console.log("Token found in database:", existingToken);
-
-    if (!existingToken) {
-      return res
-        .status(401)
-        .send({
-          MESSAGE: "Token not found in database or has already been used.",
-        });
-    }
-
-    const public_key = getPublicKey();
-
-    const payload = await verify(token, public_key);
-
-    if (!req.body) {
-      req.body = {};
-    }
-    console.log("Decoded payload:", payload);
-
-    if (payload && payload.secret_key === mail_secret_key) {
-      req.body.email = payload.email;
-      req.body.name = payload.name;
-      req.body.phone = payload.phone;
-
-      console.log("User details added to request body:", req.body);
-
-      next();
-    } else {
-      console.log("Invalid token payload:", payload);
-      return res.status(401).send({ MESSAGE: "Invalid token payload." });
-    }
-  } catch (err) {
-    console.error("Error verifying token:", err.message);
-
-    return res
-      .status(401)
-      .send({ MESSAGE: "Invalid or expired token: " + err.message });
-  }
 }
 
 async function readverifyForgotToken(req, res, next) {
@@ -222,51 +168,6 @@ async function readverifyForgotToken(req, res, next) {
   }
 }
 
-// Token verification for "register" token
-async function verifyRegisterToken(req, res, next) {
-  const tokenHeader = req.headers.authorization;
-  const token = tokenHeader && tokenHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).send({ MESSAGE: "Missing or invalid token." });
-  }
-
-  try {
-    const public_key = getPublicKey();
-    const payload = await verify(token, public_key);
-
-    if (!req.body) {
-      req.body = {};
-    }
-
-    if (payload && payload.secret_key === mail_secret_key) {
-      const snapshot = await Token.where("token", "==", token).limit(1).get();
-      if (snapshot.empty) {
-        return res
-          .status(401)
-          .send({ MESSAGE: "Token has already been used or expired." });
-      }
-      const docId = snapshot.docs[0].id;
-
-      req.body.email = payload.email;
-      req.body.name = payload.name;
-      req.body.phone = payload.phone;
-
-      await Token.doc(docId).delete();
-
-      next();
-    } else {
-      return res
-        .status(401)
-        .send({ MESSAGE: "Invalid register token payload." });
-    }
-  } catch (err) {
-    return res
-      .status(401)
-      .send({ MESSAGE: "Invalid or expired register token: " + err.message });
-  }
-}
-
 // Token verification for "forgot" token
 async function verifyForgotToken(req, res, next) {
   const tokenHeader = req.headers.authorization;
@@ -315,9 +216,7 @@ async function verifyForgotToken(req, res, next) {
 
 module.exports = {
   tokenValidator,
-  verifyRegisterToken,
   verifyForgotToken,
   readverifyForgotToken,
-  readverifyRegisterTokens,
   admintokenValidator,
 };

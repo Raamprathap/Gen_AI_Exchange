@@ -40,6 +40,9 @@ app.use('/api/auth', userRouter);
 const insightsRoutes = require('./routes/insights.route.js');
 app.use('/api', insightsRoutes);
 
+const profileRoutes = require('./routes/profile.route.js');
+app.use('/api/profile', profileRoutes);
+
 // Key generation endpoint
 app.get('/generate-keys', ed25519KeygenMiddleware);
 

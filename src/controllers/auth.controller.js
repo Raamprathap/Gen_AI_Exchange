@@ -7,16 +7,8 @@ const { V4: { verify } } = paseto;
 const admin = require("firebase-admin");
 const db = connectDB();
 const User = db.collection("users");
-const { z } = require("zod");
 const moment = require("moment-timezone");
-
-const UserSchema = z.object({
-  name: z.string(),
-  email: z.string().email(),
-  phone: z.string(),
-  isActive: z.boolean().default(true),
-  createdAt: z.string().datetime().default(() => moment().tz('Asia/Kolkata').toISOString()),
-});
+const { UserSchema } = require("../Schema/userSchema");
 
 const register = async (req, res) => {
   try {

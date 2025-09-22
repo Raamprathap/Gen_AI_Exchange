@@ -10,19 +10,18 @@ const {
 } = require("../controllers/auth.controller");
 
 const {
+  tokenValidator,
   verifyForgotToken,
   readverifyForgotToken,
-  readverifyRegisterTokens
 } = require("../middlewares/auth/tokenValidation");
 
 router.post("/register", register);
 router.post("/login", loginUser);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", verifyForgotToken, resetPassword);
-router.post("/verify-token", verifyToken);
-router.post("/verify-main-token", verifyMainToken);
+router.post("/verify-token", tokenValidator, verifyToken);
+router.post("/verify-main-token", tokenValidator, verifyMainToken);
 router.post("/refresh-token", refreshToken);
 router.get('/verify-token-forgot',  readverifyForgotToken, verifyToken);
-router.get('/verify-token-register',readverifyRegisterTokens , verifyToken);
 
 module.exports = router;
