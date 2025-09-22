@@ -20,38 +20,6 @@ const UserSchema = z.object({
 
 const register = async (req, res) => {
   try {
-    const { email, name, phone } = req.body;
-    console.log(req.body);
-
-    if (!email || !name || !phone) {
-      console.log('Missing email, name or phone number');
-      return res.status(400).json({ message: 'Email, name and Phone no are required' });
-    }
-    
-    const existingUser = await User.where("email", "==", email).get();
-
-    if (!existingUser.empty) {
-      console.log('Email already exists:', email);
-      return res.status(400).json({ message: 'Email already exists' });
-    }
-
-    await sendregisterEmail(email, name, phone);  
-
-    res.status(200).json({
-      message: 'Successfully email sent to user',
-      data: {user: { email, name, phone }}
-    });
-  } catch (error) {
-    console.error("Error registering user:", error);
-    res.status(500).json({
-      message: "Failed to register user"
-    });
-  }
-}
-
-// CREATE user
-const createUser = async (req, res) => {
-  try {
     const parseResult = UserSchema.safeParse(req.body);
     if (!parseResult.success) {
       return res.status(400).json({ message: "Validation failed", errors: parseResult.error.errors });
@@ -66,7 +34,9 @@ const createUser = async (req, res) => {
 
     console.log("Creating user with data:", userData);
 
-    delete userData.password;
+    userData.password = await bcrypt.hash(req.body.password, 10);
+    userData.createdAt = moment().tz('Asia/Kolkata').toISOString();
+    userData.isActive = true;
 
     const docRef = await db.collection("users").add(userData);
     await sendWelcomeMail(userData.email, userData.name);
@@ -90,23 +60,22 @@ const createUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
   try {
-    const { idToken, rememberme } = req.body;
-
-    if (!idToken) {
-      return res.status(400).json({ message: "idToken is required" });
-    }
-
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const email = decodedToken.email;
+    const { email, password, rememberme } = req.body;
 
     if (!email) {
       return res.status(400).json({ message: 'Email is required' });
     }
+
     const userSnapshot = await User.where("email", "==", email).get();
     if (userSnapshot.empty) {
       return res.status(404).json({ message: 'User not found' });
     }
     const user = userSnapshot.docs[0].data();
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid password' });
+    }
 
     const userData = {
       id: userSnapshot.docs[0].id,
@@ -178,7 +147,8 @@ const resetPassword = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     const userRef = userSnapshot.docs[0].ref;
-    await userRef.update({ password: newPassword });
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await userRef.update({ password: hashedPassword });
     res.status(200).json({ 
       message: 'Password reset successful' 
     });
@@ -266,7 +236,6 @@ const refreshToken = async (req, res) => {
 
 module.exports = {
   register,
-  createUser,
   loginUser,
   forgotPassword,
   resetPassword,

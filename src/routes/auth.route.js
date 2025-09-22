@@ -1,7 +1,6 @@
 const router = require("express").Router();
-const { 
+const {
     register,
-    createUser,
     loginUser,
     forgotPassword,
     verifyToken,
@@ -11,17 +10,14 @@ const {
 } = require("../controllers/auth.controller");
 
 const {
-  tokenValidator,
-  verifyRegisterToken,
   verifyForgotToken,
   readverifyForgotToken,
   readverifyRegisterTokens
 } = require("../middlewares/auth/tokenValidation");
 
 router.post("/register", register);
-router.post("/create-user", verifyRegisterToken, createUser);
 router.post("/login", loginUser);
-router.post("/forgot-password", readverifyForgotToken, forgotPassword);
+router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", verifyForgotToken, resetPassword);
 router.post("/verify-token", verifyToken);
 router.post("/verify-main-token", verifyMainToken);
