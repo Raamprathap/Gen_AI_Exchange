@@ -59,6 +59,42 @@ const ResumeSchema = z.object({
   analysis: ResumeAnalysisSchema,
 }).optional();
 
+const ActivitySchema = z.object({
+  action: z.string().optional(),
+  item: z.string().optional(),
+  time: z.string().optional(),
+  type: z.enum(["course", "roadmap", "achievement", "skill", "certification"]).optional(),
+}).optional();
+
+const MilestoneSchema = z.object({
+  title: z.string().optional(),
+  deadline: z.string().optional(),
+  progress: z.number().optional(),
+  priority: z.enum(["low", "medium", "high"]).optional(),
+  category: z.string().optional(),
+}).optional();
+
+const RecommendationSchema = z.object({
+  type: z.enum(["course", "certification", "job", "skill", "project"]).optional(),
+  title: z.string().optional(),
+  provider: z.string().optional(),
+  duration: z.string().optional(),
+  rating: z.number().optional(),
+  relevance: z.number().optional(),
+  url: z.string().optional(),
+}).optional();
+
+const DashboardDataSchema = z.object({
+  skillsMastered: z.number().optional(),
+  careerScore: z.number().optional(),
+  coursesCompleted: z.number().optional(),
+  certifications: z.number().optional(),
+  profileCompleteness: z.number().optional(),
+  recentActivities: z.array(ActivitySchema).optional(),
+  upcomingMilestones: z.array(MilestoneSchema).optional(),
+  recommendations: z.array(RecommendationSchema).optional(),
+}).optional();
+
 const UserSchema = z.object({
   name: z.string(),
   email: z.string().email(),
@@ -78,6 +114,7 @@ const UserSchema = z.object({
   preferences: PreferencesSchema,
 
   resume: ResumeSchema,
+  dashboardData: DashboardDataSchema,
 });
 
 module.exports = { UserSchema };
