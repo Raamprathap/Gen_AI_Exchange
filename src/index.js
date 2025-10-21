@@ -43,6 +43,10 @@ app.use('/api', insightsRoutes);
 const profileRoutes = require('./routes/profile.route.js');
 app.use('/api/profile', profileRoutes);
 
+// Roadmaps routes
+const roadmapRoutes = require('./routes/roadmap.route.js');
+app.use('/api/roadmaps', roadmapRoutes);
+
 // Key generation endpoint
 app.get('/generate-keys', ed25519KeygenMiddleware);
 
