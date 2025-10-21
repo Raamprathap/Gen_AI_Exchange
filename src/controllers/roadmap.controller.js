@@ -15,7 +15,14 @@ async function createRoadmap(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid payload', details: parsed.error.flatten() });
     }
     const data = parsed.data;
-    const payload = { ...data, createdAt: toISTIso(), updatedAt: toISTIso() };
+    const payload = { 
+      ...data, 
+      email: req.body.email || data.email, 
+      userId: req.body.userId || data.userId, 
+      ownerName: req.body.name || data.ownerName, 
+      createdAt: toISTIso(), 
+      updatedAt: toISTIso() 
+    };
     const ref = await db.collection('roadmaps').add(payload);
     const snap = await ref.get();
     return res.status(201).json({ success: true, data: { id: ref.id, ...snap.data() } });
@@ -27,7 +34,7 @@ async function createRoadmap(req, res) {
 
 async function listRoadmaps(req, res) {
   try {
-    const email = req.query.email; // optional filter by user
+    const email = req.body.email || req.query.email; // prefer authed user's email
     let query = db.collection('roadmaps');
     if (email) query = query.where('email', '==', email);
     const snap = await query.get();
@@ -46,7 +53,11 @@ async function getRoadmap(req, res) {
     const ref = db.collection('roadmaps').doc(id);
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ success: false, error: 'Roadmap not found' });
-    return res.json({ success: true, data: { id: snap.id, ...snap.data() } });
+    const doc = { id: snap.id, ...snap.data() };
+    if (doc.email && req.body.email && doc.email !== req.body.email) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+    return res.json({ success: true, data: doc });
   } catch (err) {
     console.error('getRoadmap error:', err);
     return res.status(500).json({ success: false, error: err.message });
@@ -71,6 +82,10 @@ async function updateRoadmap(req, res) {
     const ref = db.collection('roadmaps').doc(id);
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ success: false, error: 'Roadmap not found' });
+    const existing = snap.data();
+    if (existing.email && req.body.email && existing.email !== req.body.email) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
 
     await ref.set(update, { merge: true });
     const fresh = await ref.get();
@@ -89,6 +104,10 @@ async function deleteRoadmap(req, res) {
     const ref = db.collection('roadmaps').doc(id);
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ success: false, error: 'Roadmap not found' });
+    const existing = snap.data();
+    if (existing.email && req.body.email && existing.email !== req.body.email) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
 
     await ref.delete();
     return res.json({ success: true, message: 'Roadmap deleted' });

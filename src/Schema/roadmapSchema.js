@@ -28,6 +28,8 @@ const RoadmapSchema = z.object({
   phases: z.array(PhaseSchema).default([]),
   // Optional linkage to user
   email: z.string().email().optional(),
+  userId: z.string().optional(),
+  ownerName: z.string().optional(),
 });
 
 const RoadmapUpdateSchema = RoadmapSchema.partial();
