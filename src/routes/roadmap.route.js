@@ -8,7 +8,7 @@ const {
   deleteRoadmap,
 } = require('../controllers/roadmap.controller');
 
-router.post('/', tokenValidator, createRoadmap);
+router.post('/', createRoadmap);
 router.get('/', tokenValidator, listRoadmaps);
 router.get('/:id', tokenValidator, getRoadmap);
 router.patch('/:id', tokenValidator, updateRoadmap);
