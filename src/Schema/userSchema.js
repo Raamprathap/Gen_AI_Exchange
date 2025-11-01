@@ -55,6 +55,8 @@ const ResumeSchema = z.object({
   score: z.number().optional(),
   lastUpdated: z.string().optional(),
   fileName: z.string().optional(),
+  url: z.string().url().optional(),
+  publicId: z.string().optional(),
   suggestions: z.array(ResumeSuggestionSchema).optional(),
   analysis: ResumeAnalysisSchema,
 }).optional();

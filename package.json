@@ -21,6 +21,8 @@
   },
   "homepage": "https://github.com/Raamprathap/Gen_AI_Exchange#readme",
   "dependencies": {
+    "cloudinary": "^1.41.3",
+    "multer": "^1.4.5-lts.1",
     "@google-cloud/bigquery": "^7.3.0",
     "@google-cloud/vertexai": "^1.7.0",
     "axios": "^1.12.2",

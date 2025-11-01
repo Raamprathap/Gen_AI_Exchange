@@ -21,7 +21,7 @@ async function createRoadmap(req, res) {
       userId: req.body.userId || data.userId, 
       ownerName: req.body.name || data.ownerName, 
       createdAt: toISTIso(), 
-      updatedAt: toISTIso() 
+      updatedAt: toISTIso()
     };
     const ref = await db.collection('roadmaps').add(payload);
     const snap = await ref.get();
@@ -34,7 +34,7 @@ async function createRoadmap(req, res) {
 
 async function listRoadmaps(req, res) {
   try {
-    const email = req.body.email || req.query.email; // prefer authed user's email
+    const email = req.body.email || req.query.email;
     let query = db.collection('roadmaps');
     if (email) query = query.where('email', '==', email);
     const snap = await query.get();

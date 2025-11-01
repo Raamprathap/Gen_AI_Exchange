@@ -47,6 +47,10 @@ app.use('/api/profile', profileRoutes);
 const roadmapRoutes = require('./routes/roadmap.route.js');
 app.use('/api/roadmaps', roadmapRoutes);
 
+// LaTeX compile route
+const compileRoutes = require('./routes/compile.route.js');
+app.use('/api/compile', compileRoutes);
+
 // Key generation endpoint
 app.get('/generate-keys', ed25519KeygenMiddleware);
 
@@ -88,11 +92,13 @@ app.get('/api', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  });
+  console.error(err.stack || err);
+  const status = err.status || err.statusCode || (err.type === 'entity.too.large' ? 413 : 500);
+  const payload = {
+    error: status === 413 ? 'Payload Too Large' : 'Something went wrong!',
+    message: process.env.NODE_ENV === 'development' ? err.message : (status === 413 ? 'Request entity too large' : 'Internal server error')
+  };
+  res.status(status).json(payload);
 });
 
 // 404 handler
@@ -103,4 +109,11 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
+  // Start LaTeX warm-up asynchronously (can be disabled via LATEX_WARMUP=0)
+  try {
+    const { startLatexWarmup } = require('./utils/latexWarmup');
+    startLatexWarmup();
+  } catch (e) {
+    console.warn('LaTeX warmup not started:', e && e.message ? e.message : String(e));
+  }
 });

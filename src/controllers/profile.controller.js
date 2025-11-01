@@ -1,10 +1,43 @@
 const { UserSchema } = require('../Schema/userSchema');
 const connectDB = require('../config/connectDB');
 const moment = require('moment-timezone');
+const cloudinary = require('../config/cloudinary');
+const { Readable } = require('stream');
+const fs = require('fs');
+const path = require('path');
+const paseto = require('paseto');
+const { V4: { verify } } = paseto;
 
 const db = connectDB();
 
 const PartialUserSchema = UserSchema.partial();
+
+function getPublicKey() {
+	try {
+		const pubPath = path.resolve(__dirname, '../middlewares/rsa/public_key.pem');
+		return fs.readFileSync(pubPath);
+	} catch (err) {
+		return '123';
+	}
+}
+
+async function resolveEmail(req) {
+	const fromUser = req.user && req.user.email;
+	const fromBody = req.body && req.body.email;
+	const fromQuery = req.query && req.query.email;
+	const fromParams = req.params && req.params.email;
+	if (fromUser || fromBody || fromQuery || fromParams) return fromUser || fromBody || fromQuery || fromParams;
+	// Fallback: decode Authorization bearer
+	const auth = req.headers && req.headers.authorization;
+	const token = auth && auth.split(' ')[1];
+	if (!token) return undefined;
+	try {
+		const payload = await verify(token, getPublicKey());
+		return payload && payload.email;
+	} catch (e) {
+		return undefined;
+	}
+}
 
 async function getUser(req, res) {
 	try {
@@ -214,3 +247,69 @@ function generatePersonalizedRecommendations(userData) {
 }
 
 module.exports = { getUser, updateProfile, getDashboardData };
+ 
+async function uploadResume(req, res) {
+	try {
+		const email = await resolveEmail(req);
+		if (!email) return res.status(400).json({ success: false, error: 'email is required' });
+
+		if (!req.file) return res.status(400).json({ success: false, error: 'resume file is required' });
+		const { mimetype, originalname, buffer } = req.file;
+		if (mimetype !== 'application/pdf') {
+			return res.status(400).json({ success: false, error: 'Only PDF resumes are allowed' });
+		}
+
+		const userQuery = db.collection('users').where('email', '==', email).limit(1);
+		const snap = await userQuery.get();
+		if (snap.empty) {
+			return res.status(404).json({ success: false, error: 'User not found' });
+		}
+		const userDoc = snap.docs[0];
+		const userData = userDoc.data();
+		const oldPublicId = userData.resume && userData.resume.publicId;
+
+		const emailKey = email
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '_')
+			.replace(/_+/g, '_')
+			.replace(/^_+|_+$/g, '')
+			.slice(0, 120);
+		const public_id = `resumes/${emailKey}`;
+
+		const result = await new Promise((resolve, reject) => {
+			const uploadStream = cloudinary.uploader.upload_stream(
+				{ resource_type: 'raw', public_id, overwrite: true, format: 'pdf' },
+				(error, result) => {
+					if (error) return reject(error);
+					resolve(result);
+				}
+			);
+			Readable.from(buffer).pipe(uploadStream);
+		});
+
+		if (oldPublicId && oldPublicId !== result.public_id) {
+			try {
+				await cloudinary.uploader.destroy(oldPublicId, { resource_type: 'raw' });
+			} catch (e) {
+				console.warn('Failed to delete old resume from Cloudinary:', e.message);
+			}
+		}
+
+		const updatedResume = {
+			fileName: originalname,
+			lastUpdated: moment().tz('Asia/Kolkata').toISOString(),
+			url: result.secure_url,
+			publicId: result.public_id,
+		};
+
+		const docRef = userDoc.ref;
+		await docRef.set({ resume: updatedResume, updatedAt: updatedResume.lastUpdated }, { merge: true });
+		const fresh = await docRef.get();
+		return res.json({ success: true, data: { id: fresh.id, ...fresh.data() } });
+	} catch (error) {
+		console.error('uploadResume error:', error);
+		return res.status(500).json({ success: false, error: error.message });
+	}
+}
+
+module.exports.uploadResume = uploadResume;
