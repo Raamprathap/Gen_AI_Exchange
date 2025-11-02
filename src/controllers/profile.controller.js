@@ -278,7 +278,7 @@ async function uploadResume(req, res) {
 
 		const result = await new Promise((resolve, reject) => {
 			const uploadStream = cloudinary.uploader.upload_stream(
-				{ resource_type: 'raw', public_id, overwrite: true, format: 'pdf' },
+				{ resource_type: 'raw', public_id, overwrite: true, format: 'pdf', access_mode: 'public' },
 				(error, result) => {
 					if (error) return reject(error);
 					resolve(result);
