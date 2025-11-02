@@ -276,11 +276,11 @@ async function uploadResume(req, res) {
 			.replace(/_+/g, '_')
 			.replace(/^_+|_+$/g, '')
 			.slice(0, 120);
-		const public_id = `resumes/${emailKey}`;
+		const public_id = `resumes/${emailKey}.pdf`;
 
 		const dataUri = `data:application/pdf;base64,${buffer.toString('base64')}`;
 		const result = await cloudinary.uploader.upload(dataUri, {
-			resource_type: 'auto',
+			resource_type: 'raw',
 			public_id,
 			overwrite: true,
 			access_mode: 'public',
@@ -292,10 +292,19 @@ async function uploadResume(req, res) {
 		}
 
 		if (oldPublicId && oldPublicId !== result.public_id) {
-			try {
-				await cloudinary.uploader.destroy(oldPublicId, { resource_type: 'raw' });
-			} catch (e) {
-				console.warn('Failed to delete old resume from Cloudinary:', e.message);
+			const candidates = Array.from(new Set([
+				oldPublicId,
+				oldPublicId.endsWith('.pdf') ? oldPublicId : `${oldPublicId}.pdf`,
+				oldPublicId.replace(/\.pdf$/i, ''),
+			]));
+			for (const pid of candidates) {
+				for (const rt of ['raw', 'image']) {
+					try {
+						await cloudinary.uploader.destroy(pid, { resource_type: rt });
+						break;
+					} catch (_) {
+					}
+				}
 			}
 		}
 
