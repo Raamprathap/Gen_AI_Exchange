@@ -57,6 +57,7 @@ const ResumeSchema = z.object({
   fileName: z.string().optional(),
   url: z.string().url().optional(),
   publicId: z.string().optional(),
+  latex: z.string().optional(),
   suggestions: z.array(ResumeSuggestionSchema).optional(),
   analysis: ResumeAnalysisSchema,
 }).optional();

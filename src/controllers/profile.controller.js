@@ -315,6 +315,10 @@ async function uploadResume(req, res) {
 			publicId: result.public_id,
 		};
 
+		if (req.body && typeof req.body.latex === 'string' && req.body.latex.trim()) {
+				updatedResume.latex = req.body.latex;
+		}
+
 		const docRef = userDoc.ref;
 		await docRef.set({ resume: updatedResume, updatedAt: updatedResume.lastUpdated }, { merge: true });
 		const fresh = await docRef.get();
@@ -326,3 +330,30 @@ async function uploadResume(req, res) {
 }
 
 module.exports.uploadResume = uploadResume;
+
+async function getResumeSource(req, res) {
+	try {
+		const email = await resolveEmail(req);
+		if (!email) return res.status(400).json({ success: false, error: 'email is required' });
+
+		const userQuery = db.collection('users').where('email', '==', email).limit(1);
+		const snap = await userQuery.get();
+		if (snap.empty) {
+			return res.status(404).json({ success: false, error: 'User not found' });
+		}
+
+		const userDoc = snap.docs[0];
+		const data = userDoc.data();
+		const latex = data?.resume?.latex;
+		if (typeof latex === 'string' && latex.trim()) {
+			res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+			return res.status(200).send(latex);
+		}
+		return res.status(404).json({ success: false, error: 'No LaTeX source stored' });
+	} catch (error) {
+		console.error('getResumeSource error:', error);
+		return res.status(500).json({ success: false, error: error.message });
+	}
+}
+
+module.exports.getResumeSource = getResumeSource;
