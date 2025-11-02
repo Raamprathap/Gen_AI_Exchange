@@ -1,17 +1,21 @@
 # Base image with Node.js
 FROM node:22-bookworm-slim
 
-# Install dependencies and Tectonic (download static Linux binary from GitHub)
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl tar \
-    && update-ca-certificates \
-    && mkdir -p /tmp/tectonic \
-    && curl -fsSL -o /tmp/tectonic/tectonic.tar.gz \
-    https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-gnu.tar.gz \
-    && tar -xzf /tmp/tectonic/tectonic.tar.gz -C /tmp/tectonic \
-    && mv /tmp/tectonic/tectonic /usr/bin/tectonic \
-    && chmod +x /usr/bin/tectonic \
-    && rm -rf /var/lib/apt/lists/* /tmp/tectonic
+# Install dependencies and Tectonic (resolve latest asset via GitHub API)
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates curl jq tar findutils; \
+    update-ca-certificates; \
+    mkdir -p /tmp/tect; \
+    url=$(curl -fsSL https://api.github.com/repos/tectonic-typesetting/tectonic/releases/latest \
+    | jq -r '.assets[] | select(.name | test("x86_64-unknown-linux-gnu.*\\.tar\\.gz$")) .browser_download_url'); \
+    echo "Downloading Tectonic from: $url"; \
+    curl -fsSL -o /tmp/tect/tt.tgz "$url"; \
+    tar -xzf /tmp/tect/tt.tgz -C /tmp/tect; \
+    TTBIN=$(find /tmp/tect -type f -name tectonic | head -n1); \
+    mv "$TTBIN" /usr/bin/tectonic; \
+    chmod +x /usr/bin/tectonic; \
+    rm -rf /var/lib/apt/lists/* /tmp/tect
 
 WORKDIR /app
 
