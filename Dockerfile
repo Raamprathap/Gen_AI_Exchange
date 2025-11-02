@@ -9,8 +9,10 @@ RUN set -eux; \
     fontconfig libgraphite2-3 libharfbuzz0b libicu72 libfreetype6; \
     update-ca-certificates; \
     mkdir -p /tmp/tect; \
+    # Prefer static musl build to avoid shared library issues; fall back to gnu if musl is not available
     url=$(curl -fsSL https://api.github.com/repos/tectonic-typesetting/tectonic/releases/latest \
-    | jq -r '.assets[] | select(.name | test("x86_64-unknown-linux-gnu.*\\.tar\\.gz$")) .browser_download_url'); \
+    | jq -r '(.assets[] | select(.name | test("x86_64-unknown-linux-musl.*\\.tar\\.gz$")) .browser_download_url), \
+    (.assets[] | select(.name | test("x86_64-unknown-linux-gnu.*\\.tar\\.gz$")) .browser_download_url) | select(.!=null) | .' | head -n1); \
     echo "Downloading Tectonic from: $url"; \
     curl -fsSL -o /tmp/tect/tt.tgz "$url"; \
     tar -xzf /tmp/tect/tt.tgz -C /tmp/tect; \
@@ -18,6 +20,9 @@ RUN set -eux; \
     mv "$TTBIN" /usr/bin/tectonic; \
     chmod +x /usr/bin/tectonic; \
     rm -rf /var/lib/apt/lists/* /tmp/tect
+
+# Verify Tectonic is runnable at build time (fail early if not)
+RUN /usr/bin/tectonic --version || (echo 'Tectonic not runnable' && exit 1)
 
 WORKDIR /app
 

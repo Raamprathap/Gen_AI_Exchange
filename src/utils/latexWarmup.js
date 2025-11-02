@@ -24,14 +24,26 @@ function startLatexWarmup() {
     const content = '\\documentclass{article}\n\\begin{document}\nWarmup\\end{document}';
     await fsp.writeFile(texPath, content, 'utf8');
     const args = ['-o', tmpDir, 'warm.tex'];
-    const child = spawn(tectonicCmd, args, { cwd: tmpDir, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  console.log(`[compile] Warmup using: ${tectonicCmd}`);
+  const child = spawn(tectonicCmd, args, { cwd: tmpDir, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  let out = Buffer.alloc(0);
+  let err = Buffer.alloc(0);
+  child.stdout.on('data', (d) => { out = Buffer.concat([out, d]); });
+  child.stderr.on('data', (d) => { err = Buffer.concat([err, d]); });
     let timedOut = false;
     const timeout = Number(process.env.LATEX_WARMUP_TIMEOUT_MS || 60000);
     const timer = setTimeout(() => { timedOut = true; try { child.kill('SIGKILL'); } catch (_) {} }, timeout);
     child.on('close', async (code) => {
       clearTimeout(timer);
       if (timedOut) console.warn('[compile] Warmup timed out');
-      else if (code !== 0) console.warn(`[compile] Warmup exited with code ${code}`);
+      else if (code !== 0) {
+        const tail = (buf) => buf.length > 1024 ? buf.slice(-1024).toString('utf8') : buf.toString('utf8');
+        console.warn(`[compile] Warmup exited with code ${code}`);
+        const o = tail(out).trim();
+        const e = tail(err).trim();
+        if (o) console.warn('[compile] Warmup stdout tail:\n' + o);
+        if (e) console.warn('[compile] Warmup stderr tail:\n' + e);
+      }
       else console.log('[compile] Warmup complete');
       await safeRmDir(tmpDir);
     });
