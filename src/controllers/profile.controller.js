@@ -27,7 +27,6 @@ async function resolveEmail(req) {
 	const fromQuery = req.query && req.query.email;
 	const fromParams = req.params && req.params.email;
 	if (fromUser || fromBody || fromQuery || fromParams) return fromUser || fromBody || fromQuery || fromParams;
-	// Fallback: decode Authorization bearer
 	const auth = req.headers && req.headers.authorization;
 	const token = auth && auth.split(' ')[1];
 	if (!token) return undefined;
@@ -258,6 +257,9 @@ async function uploadResume(req, res) {
 		if (mimetype !== 'application/pdf') {
 			return res.status(400).json({ success: false, error: 'Only PDF resumes are allowed' });
 		}
+		if (!buffer || buffer.length < 4 || buffer.slice(0, 4).toString('ascii') !== '%PDF') {
+			return res.status(400).json({ success: false, error: 'Uploaded file is not a valid PDF' });
+		}
 
 		const userQuery = db.collection('users').where('email', '==', email).limit(1);
 		const snap = await userQuery.get();
@@ -276,16 +278,18 @@ async function uploadResume(req, res) {
 			.slice(0, 120);
 		const public_id = `resumes/${emailKey}`;
 
-		const result = await new Promise((resolve, reject) => {
-			const uploadStream = cloudinary.uploader.upload_stream(
-				{ resource_type: 'raw', public_id, overwrite: true, format: 'pdf', access_mode: 'public' },
-				(error, result) => {
-					if (error) return reject(error);
-					resolve(result);
-				}
-			);
-			Readable.from(buffer).pipe(uploadStream);
+		const dataUri = `data:application/pdf;base64,${buffer.toString('base64')}`;
+		const result = await cloudinary.uploader.upload(dataUri, {
+			resource_type: 'auto',
+			public_id,
+			overwrite: true,
+			access_mode: 'public',
+			invalidate: true,
+			type: 'upload',
 		});
+		if (!result || !result.secure_url || !result.bytes) {
+			return res.status(500).json({ success: false, error: 'Failed to store resume on Cloudinary' });
+		}
 
 		if (oldPublicId && oldPublicId !== result.public_id) {
 			try {
