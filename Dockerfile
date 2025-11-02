@@ -1,10 +1,17 @@
 # Base image with Node.js
 FROM node:22-bookworm-slim
 
-# Install Tectonic LaTeX engine
+# Install dependencies and Tectonic (download static Linux binary from GitHub)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tectonic ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends ca-certificates curl tar \
+    && update-ca-certificates \
+    && mkdir -p /tmp/tectonic \
+    && curl -fsSL -o /tmp/tectonic/tectonic.tar.gz \
+    https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-gnu.tar.gz \
+    && tar -xzf /tmp/tectonic/tectonic.tar.gz -C /tmp/tectonic \
+    && mv /tmp/tectonic/tectonic /usr/bin/tectonic \
+    && chmod +x /usr/bin/tectonic \
+    && rm -rf /var/lib/apt/lists/* /tmp/tectonic
 
 WORKDIR /app
 
