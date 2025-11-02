@@ -4,7 +4,9 @@ FROM node:22-bookworm-slim
 # Install dependencies and Tectonic (resolve latest asset via GitHub API)
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates curl jq tar findutils; \
+    apt-get install -y --no-install-recommends \
+    ca-certificates curl jq tar findutils \
+    fontconfig libgraphite2-3 libharfbuzz0b libicu72 libfreetype6; \
     update-ca-certificates; \
     mkdir -p /tmp/tect; \
     url=$(curl -fsSL https://api.github.com/repos/tectonic-typesetting/tectonic/releases/latest \
