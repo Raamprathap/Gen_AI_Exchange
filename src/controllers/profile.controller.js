@@ -252,7 +252,7 @@ async function uploadResume(req, res) {
 		const email = await resolveEmail(req);
 		if (!email) return res.status(400).json({ success: false, error: 'email is required' });
 
-		if (!req.file) return res.status(400).json({ success: false, error: 'resume file is required' });
+		// if (!req.file) return res.status(400).json({ success: false, error: 'resume file is required' });
 		const { mimetype, originalname, buffer } = req.file;
 		if (mimetype !== 'application/pdf') {
 			return res.status(400).json({ success: false, error: 'Only PDF resumes are allowed' });

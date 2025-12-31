@@ -31,7 +31,7 @@ const register = async (req, res) => {
     userData.isActive = true;
 
     const docRef = await db.collection("users").add(userData);
-    await sendWelcomeMail(userData.email, userData.name);
+    // await sendWelcomeMail(userData.email, userData.name);
 
     return res.status(201).json({
       message: 'User created successfully',
